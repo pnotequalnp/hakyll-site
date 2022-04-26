@@ -1,0 +1,17 @@
+cabal-version: 3.0
+name:          hakyll-site
+version:       0.1.0.0
+copyright:     Kevin Mullins 2022
+maintainer:    kevin@pnotequalnp.com
+author:        Kevin Mullins
+tested-with:   ghc ==8.10.7 || ==9.2.1
+category:      Web
+
+executable hakyll-site
+    main-is:            Main.hs
+    default-language:   Haskell2010
+    default-extensions: BlockArguments OverloadedStrings
+    ghc-options:        -Wall -Wcompat -Werror=incomplete-patterns
+    build-depends:
+        base >=4.14 && <5.0,
+        hakyll ^>=4.15.1
