@@ -46,7 +46,7 @@
         apps.default = flake-utils.lib.mkApp { drv = ghc8107.hakyll-site; };
 
         packages = {
-          ghc8107 = static ghc8107;
+          hakyll-site = ghc8107.hakyll-site;
           default = static ghc8107;
         };
 
