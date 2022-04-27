@@ -34,6 +34,8 @@
             name = "static";
             buildInputs = [ hs.hakyll-site ];
             src = ./.;
+            LANG = "en_US.UTF-8";
+            LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
             buildPhase = ''
               hakyll-site build --verbose
             '';
