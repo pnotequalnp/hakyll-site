@@ -1,14 +1,19 @@
 module Main where
 
-import Data.Foldable (traverse_)
 import Hakyll
 
 main :: IO ()
 main = hakyllWith defaultConfiguration do
-  match "templates/*" (compile templateCompiler)
+  match "templates/*" do
+    compile templateCompiler
 
-  traverse_ serveStatic ["image/*"]
-  where
-    serveStatic r = match r do
-      route idRoute
-      compile copyFileCompiler
+  match staticFiles do
+    route idRoute
+    compile copyFileCompiler
+
+  match "404.md" do
+    route (setExtension ".html")
+    compile (pandocCompiler >>= loadAndApplyTemplate "templates/default.html" defaultContext)
+
+staticFiles :: Pattern
+staticFiles = "image/*"

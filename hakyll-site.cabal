@@ -4,7 +4,6 @@ version:       0.1.0.0
 copyright:     Kevin Mullins 2022
 maintainer:    kevin@pnotequalnp.com
 author:        Kevin Mullins
-tested-with:   ghc ==8.10.7 || ==9.2.1
 category:      Web
 
 executable hakyll-site
