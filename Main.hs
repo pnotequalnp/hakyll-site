@@ -15,5 +15,9 @@ main = hakyllWith defaultConfiguration do
     route (setExtension ".html")
     compile (pandocCompiler >>= loadAndApplyTemplate "templates/default.html" defaultContext)
 
+  match "posts/*" do
+    route (setExtension ".html")
+    compile (pandocCompiler >>= loadAndApplyTemplate "templates/default.html" defaultContext)
+
 staticFiles :: Pattern
 staticFiles = "image/*"
