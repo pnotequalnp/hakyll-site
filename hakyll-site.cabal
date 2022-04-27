@@ -18,5 +18,11 @@ library posts
 executable hakyll-site
     import:             base
     main-is:            Main.hs
-    default-extensions: BlockArguments OverloadedStrings
-    build-depends:      hakyll ^>=4.15.1
+    default-extensions:
+        BlockArguments ImportQualifiedPost OverloadedStrings ViewPatterns
+
+    build-depends:
+        filepath ^>=1.4.2,
+        hakyll ^>=4.15.1,
+        pandoc ^>=2.14,
+        slugger ^>=0.1
