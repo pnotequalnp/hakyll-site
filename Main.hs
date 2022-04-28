@@ -9,10 +9,10 @@ import Text.Pandoc.Highlighting (pygments, styleToCss)
 
 main :: IO ()
 main = hakyllWith defaultConfiguration do
-  match "templates/*" do
+  match ("templates/*" .||. "templates/**/*") do
     compile templateCompiler
 
-  match "image/*" do
+  match ("image/*" .||. "image/**/*") do
     route idRoute
     compile copyFileCompiler
 
@@ -21,7 +21,7 @@ main = hakyllWith defaultConfiguration do
     compile do
       pandocCompiler >>= loadAndApplyTemplate "templates/page.html" defaultContext
 
-  match "posts/*" do
+  match ("posts/*" .||. "posts/**/*") do
     route postRoute
     compile do
       title <- getUnderlying >>= flip getMetadataField' "title"
@@ -33,31 +33,51 @@ main = hakyllWith defaultConfiguration do
         >>= loadAndApplyTemplate "templates/source.html" sourceContext
         >>= loadAndApplyTemplate "templates/page.html" defaultContext
 
-  match "posts/*" $ version "raw" do
+  match ("posts/*" .||. "posts/**/*") $ version "raw" do
+    route sourceRoute
+    compile getResourceBody
+
+  match ("projects/minor/*" .||. "projects/major/*") do
     route sourceRoute
     compile getResourceBody
 
   create ["posts.html"] do
     route idRoute
     compile do
-      posts <- loadAll ("posts/*" .&&. hasNoVersion) >>= recentFirst
+      posts <- loadAll (("posts/*" .||. "posts/**/*") .&&. hasNoVersion) >>= recentFirst
       let postsContext =
             constField "title" "Kevin Mullins - Posts"
               <> listField "posts" (slugContext <> defaultContext) (pure posts)
+              <> defaultContext
           slugContext =
             Context \k _ (itemIdentifier -> identifier) -> do
               guard (k == "slug")
               StringField . toSlug <$> getMetadataField' identifier "title"
 
       makeItem ""
-        >>= loadAndApplyTemplate "templates/posts.html" (postsContext <> defaultContext)
+        >>= loadAndApplyTemplate "templates/posts.html" postsContext
         >>= loadAndApplyTemplate "templates/page.html" defaultContext
 
-  match "css/*" do
+  create ["projects.html"] do
+    route idRoute
+    compile do
+      minor <- loadAll "projects/minor/*" >>= recentFirst
+      major <- loadAll "projects/major/*" >>= recentFirst
+      let projectsContext =
+            constField "title" "Kevin Mullins - Projects"
+              <> listField "minorProjects" defaultContext (pure minor)
+              <> listField "majorProjects" defaultContext (pure major)
+              <> defaultContext
+
+      makeItem ""
+        >>= loadAndApplyTemplate "templates/projects.html" projectsContext
+        >>= loadAndApplyTemplate "templates/page.html" defaultContext
+
+  match ("css/*" .||. "css/**/*") do
     route idRoute
     compile compressCssCompiler
 
-  create ["css/pygments.css"] do
+  create ["css/syntax/pygments.css"] do
     route idRoute
     compile do
       fmap compressCss <$> makeItem (styleToCss pygments)
