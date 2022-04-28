@@ -27,10 +27,10 @@ main = hakyllWith defaultConfiguration do
       title <- getUnderlying >>= flip getMetadataField' "title"
       ext <- getUnderlyingExtension
       let sourcePath = toSlug title <> ext
-          sourceContext = constField "source" sourcePath
+          sourceContext = constField "source" sourcePath <> defaultContext
       pandocCompiler
         >>= loadAndApplyTemplate "templates/post.html" defaultContext
-        >>= loadAndApplyTemplate "templates/source.html" (sourceContext <> defaultContext)
+        >>= loadAndApplyTemplate "templates/source.html" sourceContext
         >>= loadAndApplyTemplate "templates/page.html" defaultContext
 
   match "posts/*" $ version "raw" do
