@@ -73,7 +73,7 @@ main = hakyllWith defaultConfiguration do
   create ["sitemap.xml"] do
     route idRoute
     compile do
-      domain <- loadBody "CNAME"
+      (init -> domain) <- loadBody "CNAME"
       let rootContext = constField "root" ("https://" <> domain)
           sitemapContext = rootContext <> postsContextWith (rootContext <> defaultContext) <> defaultContext
 

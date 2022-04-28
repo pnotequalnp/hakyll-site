@@ -13,23 +13,23 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>$root$about</loc>
+    <loc>$root$/about</loc>
     <changefreq>weekly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>$root$posts</loc>
+    <loc>$root$/posts</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>$root$projects</loc>
+    <loc>$root$/projects</loc>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   $for(posts)$
   <url>
-    <loc>$root$$slug$</loc>
+    <loc>$root$/$slug$</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
