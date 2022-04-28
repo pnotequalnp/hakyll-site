@@ -29,6 +29,7 @@
             nativeBuildInputs = tools
               ++ optional lsp [ hs.haskell-language-server ];
           };
+        hostname = "hakyll.pnotequalnp.com";
         static = hs:
           pkgs.stdenv.mkDerivation {
             name = "static";
@@ -38,6 +39,7 @@
             LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
             buildPhase = ''
               hakyll-site build --verbose
+              echo '${hostname}' > _site/CNAME
             '';
             installPhase = ''
               mkdir -p "$out/dist"
