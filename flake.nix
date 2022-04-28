@@ -13,6 +13,7 @@
               final.lib.composeExtensions prev.haskell.packageOverrides
               (hsFinal: hsPrev: {
                 hakyll-site = hsFinal.callCabal2nix "hakyll-site" ./. { };
+                posts = hsFinal.callCabal2nix "posts" ./posts { };
               });
           };
         };
@@ -23,12 +24,14 @@
         inherit (pkgs.lib) optional;
         inherit (pkgs.haskell.packages) ghc8107 ghc921;
         tools = with ghc921; [ cabal-install fourmolu hlint pkgs.nixfmt ];
-        devShell = lsp: hs:
+        devShell = f: lsp: hs:
           hs.shellFor {
-            packages = hsPkgs: with hsPkgs; [ hakyll-site ];
+            packages = f;
             nativeBuildInputs = tools
               ++ optional lsp [ hs.haskell-language-server ];
           };
+        site = p: [ p.hakyll-site ];
+        posts = p: [ p.posts ];
         static = hs:
           pkgs.stdenv.mkDerivation {
             name = "static";
@@ -49,12 +52,13 @@
 
         packages = {
           hakyll-site = ghc8107.hakyll-site;
+          posts = ghc921.posts;
           default = static ghc8107;
         };
 
         devShells = {
-          default = devShell true ghc8107;
-          ci = devShell false ghc8107;
+          default = devShell site true ghc8107;
+          posts = devShell posts true ghc921;
         };
       });
 }

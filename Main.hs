@@ -29,7 +29,7 @@ main = hakyllWith defaultConfiguration do
     route idRoute
     compile compressCssCompiler
 
-  match ("posts/*" .||. "posts/**/*") do
+  match posts do
     route postRoute
     compile do
       title <- getUnderlying >>= flip getMetadataField' "title"
@@ -41,7 +41,7 @@ main = hakyllWith defaultConfiguration do
         >>= loadAndApplyTemplate "templates/source.html" sourceContext
         >>= loadAndApplyTemplate "templates/page.html" defaultContext
 
-  match ("posts/*" .||. "posts/**/*") $ version "raw" do
+  match posts $ version "raw" do
     route sourceRoute
     compile getResourceBody
 
@@ -85,10 +85,13 @@ main = hakyllWith defaultConfiguration do
     compile do
       fmap compressCss <$> makeItem (styleToCss pygments)
 
+posts :: Pattern
+posts = ("posts/*" .||. "posts/**/*") .&&. complement "posts/posts.cabal"
+
 postsContextWith :: Context String -> Context String
 postsContextWith context =
   listField "posts" (slugContext <> context) $
-    loadAll (("posts/*" .||. "posts/**/*") .&&. hasNoVersion) >>= recentFirst
+    loadAll (posts .&&. hasNoVersion) >>= recentFirst
   where
     slugContext =
       Context \k _ (itemIdentifier -> identifier) -> do

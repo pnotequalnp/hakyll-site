@@ -1,0 +1,9 @@
+cabal-version: 3.0
+name:          posts
+version:       0.0.0.0
+copyright:     Kevin Mullins 2022
+maintainer:    kevin@pnotequalnp.com
+author:        Kevin Mullins
+
+library
+    default-language: GHC2021

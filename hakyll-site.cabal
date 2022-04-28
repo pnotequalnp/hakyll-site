@@ -6,22 +6,15 @@ maintainer:    kevin@pnotequalnp.com
 author:        Kevin Mullins
 category:      Web
 
-common base
-    default-language: Haskell2010
-    ghc-options:      -Wall -Wcompat -Werror=incomplete-patterns
-    build-depends:    base >=4.14 && <5.0
-
-library posts
-    import:          base
-    hs-source-dirs:  posts
-
 executable hakyll-site
-    import:             base
     main-is:            Main.hs
+    default-language:   Haskell2010
     default-extensions:
         BlockArguments ImportQualifiedPost OverloadedStrings ViewPatterns
 
+    ghc-options:        -Wall -Wcompat -Werror=incomplete-patterns
     build-depends:
+        base >=4.14 && <5.0,
         filepath ^>=1.4.2,
         hakyll ^>=4.15.1,
         pandoc ^>=2.14,

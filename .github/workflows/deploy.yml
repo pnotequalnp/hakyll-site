@@ -25,7 +25,7 @@ jobs:
           key: nix-store
 
       - name: Build
-        run: nix build
+        run: nix build -L
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -35,8 +35,8 @@ jobs:
 
       - name: Update store cache
         run: |
-          sudo $(command -v nix) copy --to file://${PWD}/store-cache\?compression=none .#devShells.x86_64-linux.ci
           sudo $(command -v nix) copy --to file://${PWD}/store-cache\?compression=none .#hakyll-site.env
+          sudo $(command -v nix) copy --to file://${PWD}/store-cache\?compression=none .#hakyll-site
 
   deploy:
     runs-on: ubuntu-latest
@@ -58,3 +58,28 @@ jobs:
           keep_history: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-posts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            extra-substituters = file://${{ github.workspace }}/store-cache?trusted=true
+
+      - name: Set up store cache
+        uses: actions/cache@v2
+        with:
+          path: store-cache
+          key: nix-store-posts
+
+      - name: Build
+        run: nix build .#posts -L
+
+      - name: Update store cache
+        run: |
+          sudo $(command -v nix) copy --to file://${PWD}/store-cache\?compression=none .#posts.env
