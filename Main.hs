@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Monad (guard)
 import Data.Maybe (fromMaybe)
 import Data.String.Slugger (toSlug)
 import Hakyll
@@ -26,7 +27,7 @@ main = hakyllWith defaultConfiguration do
       title <- getUnderlying >>= flip getMetadataField' "title"
       ext <- getUnderlyingExtension
       let sourcePath = toSlug title <> ext
-          sourceContext = field "source" (const (pure sourcePath))
+          sourceContext = constField "source" sourcePath
       pandocCompiler
         >>= loadAndApplyTemplate "templates/post.html" defaultContext
         >>= loadAndApplyTemplate "templates/source.html" (sourceContext <> defaultContext)
@@ -35,6 +36,22 @@ main = hakyllWith defaultConfiguration do
   match "posts/*" $ version "raw" do
     route sourceRoute
     compile getResourceBody
+
+  create ["posts.html"] do
+    route idRoute
+    compile do
+      posts <- loadAll ("posts/*" .&&. hasNoVersion) >>= recentFirst
+      let postsContext =
+            constField "title" "Kevin Mullins - Posts"
+              <> listField "posts" (slugContext <> defaultContext) (pure posts)
+          slugContext =
+            Context \k _ (itemIdentifier -> identifier) -> do
+              guard (k == "slug")
+              StringField . toSlug <$> getMetadataField' identifier "title"
+
+      makeItem ""
+        >>= loadAndApplyTemplate "templates/posts.html" (postsContext <> defaultContext)
+        >>= loadAndApplyTemplate "templates/page.html" defaultContext
 
   match "css/*" do
     route idRoute
