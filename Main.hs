@@ -12,14 +12,22 @@ main = hakyllWith defaultConfiguration do
   match ("templates/*" .||. "templates/**/*") do
     compile templateCompiler
 
-  match ("image/*" .||. "image/**/*") do
+  match ("robots.txt" .||. "image/*" .||. "image/**/*") do
     route idRoute
     compile copyFileCompiler
+
+  match "CNAME" do
+    route idRoute
+    compile getResourceBody
 
   match ("index.md" .||. "about.md" .||. "404.md") do
     route (setExtension ".html")
     compile do
       pandocCompiler >>= loadAndApplyTemplate "templates/page.html" defaultContext
+
+  match ("css/*" .||. "css/**/*") do
+    route idRoute
+    compile compressCssCompiler
 
   match ("posts/*" .||. "posts/**/*") do
     route postRoute
@@ -38,22 +46,11 @@ main = hakyllWith defaultConfiguration do
     compile getResourceBody
 
   match ("projects/minor/*" .||. "projects/major/*") do
-    route sourceRoute
     compile getResourceBody
 
   create ["posts.html"] do
     route idRoute
     compile do
-      posts <- loadAll (("posts/*" .||. "posts/**/*") .&&. hasNoVersion) >>= recentFirst
-      let postsContext =
-            constField "title" "Kevin Mullins - Posts"
-              <> listField "posts" (slugContext <> defaultContext) (pure posts)
-              <> defaultContext
-          slugContext =
-            Context \k _ (itemIdentifier -> identifier) -> do
-              guard (k == "slug")
-              StringField . toSlug <$> getMetadataField' identifier "title"
-
       makeItem ""
         >>= loadAndApplyTemplate "templates/posts.html" postsContext
         >>= loadAndApplyTemplate "templates/page.html" defaultContext
@@ -73,14 +70,33 @@ main = hakyllWith defaultConfiguration do
         >>= loadAndApplyTemplate "templates/projects.html" projectsContext
         >>= loadAndApplyTemplate "templates/page.html" defaultContext
 
-  match ("css/*" .||. "css/**/*") do
+  create ["sitemap.xml"] do
     route idRoute
-    compile compressCssCompiler
+    compile do
+      domain <- loadBody "CNAME"
+      let rootContext = constField "root" ("https://" <> domain)
+          sitemapContext = rootContext <> postsContextWith (rootContext <> defaultContext) <> defaultContext
+
+      makeItem ""
+        >>= loadAndApplyTemplate "templates/sitemap.xml" sitemapContext
 
   create ["css/syntax/pygments.css"] do
     route idRoute
     compile do
       fmap compressCss <$> makeItem (styleToCss pygments)
+
+postsContextWith :: Context String -> Context String
+postsContextWith context =
+  listField "posts" (slugContext <> context) $
+    loadAll (("posts/*" .||. "posts/**/*") .&&. hasNoVersion) >>= recentFirst
+  where
+    slugContext =
+      Context \k _ (itemIdentifier -> identifier) -> do
+        guard (k == "slug")
+        StringField . toSlug <$> getMetadataField' identifier "title"
+
+postsContext :: Context String
+postsContext = postsContextWith defaultContext
 
 postTitle :: Metadata -> String
 postTitle = toSlug . fromMaybe (error "Post missing title") . lookupString "title"
