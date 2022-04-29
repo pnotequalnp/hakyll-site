@@ -86,7 +86,9 @@ main = hakyllWith defaultConfiguration do
       fmap compressCss <$> makeItem (styleToCss pygments)
 
 posts :: Pattern
-posts = ("posts/*" .||. "posts/**/*") .&&. complement "posts/posts.cabal"
+posts =
+  ("posts/*.lhs" .||. "posts/*.md" .||. "posts/**/*.lhs" .||. "posts/**/*.md")
+    .&&. complement "posts/posts.cabal"
 
 postsContextWith :: Context String -> Context String
 postsContextWith context =

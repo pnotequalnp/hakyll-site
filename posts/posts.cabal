@@ -5,5 +5,7 @@ copyright:     Kevin Mullins 2022
 maintainer:    kevin@pnotequalnp.com
 author:        Kevin Mullins
 
-library
+library basic-pattern-synonyms
     default-language: GHC2021
+    exposed-modules: BasicPatternSynonyms
+    build-depends: base >=4.16
