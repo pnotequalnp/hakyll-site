@@ -51,9 +51,9 @@ Another is to use a view pattern:
 > sum2 (unsnoc -> Just (x, xs)) = x + sum2 xs
 
 However, not only are these not ergonomic, but they also generate `incomplete-patterns` warnings,
-since GHC doesn't understand that the second equation of each full covers the `_ : _` case of the
-list type. If this this is a common occurrence, you may wish for something a bit more ergonomic and
-type safe. A pattern synonym fills this role perfectly.
+since GHC doesn't understand that the second equation of each covers the `_ : _` case of the list
+type. If this this is a common occurrence, you may wish for something a bit more ergonomic and type
+safe. A pattern synonym fills this role perfectly.
 
 <h2 id="pattern-synonyms">Pattern Synonyms</h2>
 
@@ -66,7 +66,7 @@ pragma at the top of a file, as shown above. A trivial pattern synonym might loo
 > pattern Affirmative = True
 
 This creates a new *pattern* `Affirmative`. You can use it the same way you'd use the pattern
-`bool`. For instance:
+`True`. For instance:
 
 > toBit1 :: Bool -> Int
 > toBit1 Affirmative = 1
@@ -235,7 +235,7 @@ pattern xs :< x <- -- (3) use the bound `x` and `xs` as the arguments to the pat
 ```
 The `where` clause defines how our pattern `:<` behaves when used as an expression. We should
 strive to make sure that values created by `:<` will successfully match against `:<`. Here we do
-that by appending the first argument to the second.
+that by appending the second argument to the first.
 ```haskell
   where
     xs :< x = xs <> [x]
@@ -315,8 +315,8 @@ Naturally, we don't export the data constructor `UnsafeSortedList` to avoid peop
 a `SortedList` which isn't actually sorted. This has the advantage of having no runtime overhead
 over ordinary lists, since `newtype` wrappers are erased at compile time. However, matching against
 a sorted list becomes a hassle for consumers who don't have access to the constructor, once again
-requiring view patterns or pattern guards. For instance, extracting the head of sorted list (which
-is the minimum, of course):
+requiring view patterns or pattern guards. For instance, extracting the head of a sorted list
+(which is the minimum, of course):
 
 > sortedMin :: SortedList a -> Maybe a
 > sortedMin xs | x : _ <- getSortedList xs = Just x
