@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Pattern Synonym Basics</title>
+    <meta name="description" content="Personal site of Kevin Mullins">
+    <meta name="viewport" content="width=device-width">
+    <meta name="keywords" content="functional,programming,haskell,idris,rust">
+    
+    <link rel="stylesheet" href="/css/syntax/pygments.css" />
+    
+  </head>
+  <body>
+    <header>
+    </header>
+
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/about">About</a></li>
+        <li><a href="/posts">Posts</a></li>
+        <li><a href="/projects">Projects</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <article>
+<h2>Pattern Synonym Basics</h2>
+<h4>Published: April 28, 2022</h4>
+
+
+<p>This post is a literate Haskell file, so as always, pragmas, a module header, and some imports. It
+is up to date as of GHC 9.2.1 and uses GHC2021. Basic Haskell knowledge and an understanding of
+view patterns are assumed.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DerivingStrategies #-}</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE PatternSynonyms #-}</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE ViewPatterns #-}</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# OPTIONS_GHC -Wall -Wno-unused-top-binds #-}</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">BasicPatternSynonyms</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a> ( <span class="dt">SortedList</span> ((<span class="op">:&gt;</span>), <span class="dt">Nil</span>, getSortedList)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a> )</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.List</span> (insert, sort)</span></code></pre></div>
+<h2 id="unsnoc">
+<code>unsnoc</code>
+</h2>
+<p>It is fairly trivial to write a function to “uncons” a list from the back end. Whether it is a good
+idea to do this in general is not the topic of this post (the answer is that it probably is not).</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ot">unsnoc ::</span> [a] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (a, [a])</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>unsnoc [] <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>unsnoc [x] <span class="ot">=</span> <span class="dt">Just</span> (x, [])</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>unsnoc (x <span class="op">:</span> xs) <span class="ot">=</span> <span class="fu">fmap</span> (x <span class="op">:</span>) <span class="op">&lt;$&gt;</span> unsnoc xs</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; unsnoc [1..5]</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- Just (5,[1,2,3,4])</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; unsnoc []</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- Nothing</span></span></code></pre></div>
+<p>However, it can be unwieldy to use this as control flow. One option is to use pattern guards:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ot">sum1 ::</span> <span class="dt">Num</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> a</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>sum1 [] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>sum1 xs <span class="op">|</span> <span class="dt">Just</span> (y, ys) <span class="ot">&lt;-</span> unsnoc xs <span class="ot">=</span> y <span class="op">+</span> sum1 ys</span></code></pre></div>
+<p>Another is to use a view pattern:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ot">sum2 ::</span> <span class="dt">Num</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> a</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>sum2 [] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>sum2 (unsnoc <span class="ot">-&gt;</span> <span class="dt">Just</span> (x, xs)) <span class="ot">=</span> x <span class="op">+</span> sum2 xs</span></code></pre></div>
+<p>However, not only are these not ergonomic, but they also generate <code>incomplete-patterns</code> warnings,
+since GHC doesn’t understand that the second equation of each covers the <code>_ : _</code> case of the list
+type. If this this is a common occurrence, you may wish for something a bit more ergonomic and type
+safe. A pattern synonym fills this role perfectly.</p>
+<h2 id="pattern-synonyms">
+Pattern Synonyms
+</h2>
+<p>Pattern synonyms look much like ordinary function definitions, consisting of a (usually optional)
+type signature and an equation. They are enabled by the <code>PatternSynonyms</code> GHC extension, which can
+be turned on in a <code>.cabal</code> file, with the <code>-XPatternSynonyms</code> flag in a shell, or with a <code>LANGUAGE</code>
+pragma at the top of a file, as shown above. A trivial pattern synonym might look like this:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Affirmative</span><span class="ot"> ::</span> <span class="dt">Bool</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Affirmative</span> <span class="ot">=</span> <span class="dt">True</span></span></code></pre></div>
+<p>This creates a new <em>pattern</em> <code>Affirmative</code>. You can use it the same way you’d use the pattern
+<code>True</code>. For instance:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ot">toBit1 ::</span> <span class="dt">Bool</span> <span class="ot">-&gt;</span> <span class="dt">Int</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>toBit1 <span class="dt">Affirmative</span> <span class="ot">=</span> <span class="dv">1</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>toBit1 _ <span class="ot">=</span> <span class="dv">0</span></span></code></pre></div>
+<p>We can also write a similar pattern for <code>False</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Negative</span><span class="ot"> ::</span> <span class="dt">Bool</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Negative</span> <span class="ot">=</span> <span class="dt">False</span></span></code></pre></div>
+<p>Now we can rewrite <code>toBit1</code> using both pattern synonyms.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ot">toBit2 ::</span> <span class="dt">Bool</span> <span class="ot">-&gt;</span> <span class="dt">Int</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>toBit2 <span class="dt">Affirmative</span> <span class="ot">=</span> <span class="dv">1</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>toBit2 <span class="dt">Negative</span> <span class="ot">=</span> <span class="dv">0</span></span></code></pre></div>
+<p>But alas, GHC issues an <code>incomplete-patterns</code> for <code>toBit2</code>. Although we’ve covered all possible
+cases of <code>Bool</code>, GHC still doesn’t know that this is the case:</p>
+<pre><code>    Pattern match(es) are non-exhaustive
+    In an equation for ‘toBit2’:
+        Patterns of type ‘Bool’ not matched:
+            False
+            True</code></pre>
+<p>In order to convince GHC that our patterns do cover the input, we can use a <code>COMPLETE</code> pragma.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# COMPLETE Affirmative, Negative #-}</span></span></code></pre></div>
+<p>This pragma takes a comma-separated list of patterns and instructs GHC that those patterns used in
+combination fully cover their input. Be careful: GHC doesn’t attempt to verify that this is true.
+You can easily suppress a valid <code>incomplete-patterns</code> warning with a bad <code>COMPLETE</code> pragma.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Truth</span><span class="ot"> ::</span> <span class="dt">Bool</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Truth</span> <span class="ot">=</span> <span class="dt">True</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# COMPLETE Truth #-}</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="ot">bad ::</span> <span class="dt">Bool</span> <span class="ot">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>bad <span class="dt">Truth</span> <span class="ot">=</span> <span class="st">&quot;true&quot;</span></span></code></pre></div>
+<p>GHC generates no error or warning that <code>bad</code> does not cover its input, and applying it to <code>False</code>
+will yield a runtime error.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; bad True</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- &quot;true&quot;</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; bad False</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- BasicPatternSynonyms.hs: Non-exhaustive patterns in function bad</span></span></code></pre></div>
+<p>Patterns are not limited to simple values. For example, a pattern that matches through two layers
+of <code>Maybe</code>s:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">JustJust</span><span class="ot"> ::</span> a <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">Maybe</span> a)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">JustJust</span> x <span class="ot">=</span> <span class="dt">Just</span> (<span class="dt">Just</span> x)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">JustNothing</span><span class="ot"> ::</span> <span class="dt">Maybe</span> (<span class="dt">Maybe</span> a)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">JustNothing</span> <span class="ot">=</span> <span class="dt">Just</span> <span class="dt">Nothing</span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# COMPLETE JustJust, JustNothing, Nothing #-}</span></span></code></pre></div>
+<p>The first thing that might look odd here is the type of <code>JustJust</code>. You may intuitively want the
+arrow to go the other direction: <code>Maybe (Maybe a) -&gt; a</code>, since the pattern is “extracting” the <code>a</code>
+from within the nested <code>Maybe</code>s. However, pattern synonym signatures are a little bit different
+from normal functions. The final section is called the scrutinee type and is placed at the far
+right of the signature, after the final <code>-&gt;</code> if one exists. For both <code>JustJust</code> and <code>JustNothing</code>,
+the scrutinee type is <code>Maybe (Maybe a)</code>. This is the input type against which we can attempt to
+match these patterns. Preceding the final arrow are the argument types. <code>JustNothing</code> has no
+arguments, and <code>JustJust</code> has a single argument of type <code>a</code>. Let’s see how we might use these
+patterns in a function:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ot">doubleMaybe ::</span> b <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">Maybe</span> a) <span class="ot">-&gt;</span> b</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>doubleMaybe _ _ f (<span class="dt">JustJust</span> x) <span class="ot">=</span> f x</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>doubleMaybe _ z _ <span class="dt">JustNothing</span> <span class="ot">=</span> z</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>doubleMaybe z _ _ <span class="dt">Nothing</span> <span class="ot">=</span> z</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; doubleMaybe 1 2 (+ 1) Nothing</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- 1</span></span></code></pre></div>
+<p>Note that this function does not generate any warnings, since we marked this set of patterns
+as covering via the <code>COMPLETE</code> pragma above.</p>
+<h2 id="directionality">
+Directionality
+</h2>
+<p>Pattern synonyms defined with an <code>=</code> are called “bidirectional” or “implicitly bidirectional.” This
+means that they can also be used as an <em>expression</em> in addition to a pattern.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; :type JustNothing</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- Maybe (Maybe a)</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; doubleMaybe 1 2 (+ 1) JustNothing</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- 2</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; doubleMaybe 1 2 (+ 1) (JustJust 3)</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="co">-- 4</span></span></code></pre></div>
+<p>In this way, they behave a lot like regular data constructors. The other possibilities for pattern
+synonyms are “unidirectional” and “explicitly bidirectional.” A unidirectional pattern synonym is
+defined with a left arrow <code>&lt;-</code> instead of the equals sign <code>=</code>.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Yes</span><span class="ot"> ::</span> <span class="dt">Bool</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Yes</span> <span class="ot">&lt;-</span> <span class="dt">True</span></span></code></pre></div>
+<p>Patterns defined this way cannot be used in an expression.</p>
+<p>Explicitly bidirectional pattern synonyms are also defined with a left arrow, but additionally have
+a <code>where</code> clause which defines the pattern a second time, this time with an <code>=</code>. The definition in
+the where clause is just like an ordinary function, and is used when the pattern is used as an
+expression.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Yeah</span><span class="ot"> ::</span> <span class="dt">Bool</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Yeah</span> <span class="ot">&lt;-</span> <span class="dt">True</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Yeah</span> <span class="ot">=</span> <span class="dt">False</span></span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; :type Yeah</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- Bool</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; Yeah</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- False</span></span></code></pre></div>
+<p>The pattern <code>Yeah</code> matches the value <code>True</code>, but when used as an expression produces the value
+<code>False</code>. It can be confusing if you define pattern synonyms that behave counterintuitively like
+this, but GHC will make no attempt to stop you.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ot">nah ::</span> <span class="dt">Bool</span> <span class="ot">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>nah <span class="dt">Yeah</span> <span class="ot">=</span> <span class="st">&quot;nah&quot;</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>nah _ <span class="ot">=</span> <span class="st">&quot;yeah&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb24"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; nah Yeah</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- &quot;yeah&quot;</span></span></code></pre></div>
+<p>This is confusing! The pattern <code>Yeah</code> doesn’t match the expression <code>Yeah</code>. I strongly recommend
+taking care to avoid this kind of behavior by defining sensible bidirectional pattern synonyms.
+When possible, let GHC do it for you by using an <em>implicitly</em> bidirectional pattern synonym.</p>
+<h2 id="unsnoc-again">
+<code>unsnoc</code> (again)
+</h2>
+<p>Equipped with this knowledge, we can return to our dilemma with <code>unsnoc</code> from above. We can define
+an explicitly bidirectional pattern synonym for it with a view pattern:</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span><span class="ot"> (:&lt;) ::</span> [a] <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> [a]</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> xs <span class="op">:&lt;</span> x <span class="ot">&lt;-</span> (unsnoc <span class="ot">-&gt;</span> <span class="dt">Just</span> (x, xs))</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    xs <span class="op">:&lt;</span> x <span class="ot">=</span> xs <span class="op">&lt;&gt;</span> [x]</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# COMPLETE (:&lt;), [] #-}</span></span></code></pre></div>
+<p>Let’s break that down. The signature defines the type of both arguments as well as the scrutinee.
+One argument as a list (the “init” of the scrutinee), and another as a single value (the “last” of
+the scrutinee). The type of the scrutinee that we’re matching against is a list of any type.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span><span class="ot"> (:&lt;) ::</span> [a] <span class="co">-- The type of the first argument</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>             <span class="ot">-&gt;</span> a   <span class="co">-- The type of the second argument</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>             <span class="ot">-&gt;</span> [a] <span class="co">-- The type of the scrutinee</span></span></code></pre></div>
+<p>The next line defines <code>:&lt;</code> as used in a pattern. Here we use the <code>unsnoc</code> that we defined above as
+a view pattern, matching its result against <code>Just (x, xs)</code>, which brings <code>x :: a</code> and <code>xs :: [a]</code>
+into scope. We then bind them as the arguments to our new pattern <code>:&lt;</code>. It maybe feel a little
+backwards, defining variables on the right and then using them on the left, but this is how pattern
+synonyms work.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> xs <span class="op">:&lt;</span> x <span class="ot">&lt;-</span> <span class="co">-- (3) use the bound `x` and `xs` as the arguments to the pattern synonym</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  (unsnoc <span class="ot">-&gt;</span>       <span class="co">-- (1) apply `unsnoc` to the scrutinee as a view pattern</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Just</span> (x, xs))  <span class="co">-- (2) match the result of the application against the pattern `Just (x, xs)`</span></span></code></pre></div>
+<p>The <code>where</code> clause defines how our pattern <code>:&lt;</code> behaves when used as an expression. We should
+strive to make sure that values created by <code>:&lt;</code> will successfully match against <code>:&lt;</code>. Here we do
+that by appending the second argument to the first.</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>    xs <span class="op">:&lt;</span> x <span class="ot">=</span> xs <span class="op">&lt;&gt;</span> [x]</span></code></pre></div>
+<p>The <code>COMPLETE</code> pragma indicates that this pattern combined with the pattern <code>[]</code> form a complete
+set for matching against lists, allowing us to use them in definitions without an
+<code>incomplete-patterns</code> warning.</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# COMPLETE (:&lt;), [] #-}</span></span></code></pre></div>
+<p>Now we can rewrite our <code>sum</code> functions from before with our new pattern. It is much more ergonomic,
+and also doesn’t generate any warnings.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="ot">sum3 ::</span> <span class="dt">Num</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> a</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>sum3 [] <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>sum3 (xs <span class="op">:&lt;</span> x) <span class="ot">=</span> x <span class="op">+</span> sum3 xs</span></code></pre></div>
+<div class="sourceCode" id="cb31"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; sum3 [1..5]</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- 15</span></span></code></pre></div>
+<p>Since we defined it as explicitly bidirectional, we can also use our pattern to construct lists by
+appending to the end.</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; [1..5] :&lt; 6</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- [1,2,3,4,5,6]</span></span></code></pre></div>
+<h2 id="patterns-as-predicates">
+Patterns as Predicates
+</h2>
+<p>Another use of pattern synonyms is to check properties of data. For instance we might match against
+a sorted list like this:</p>
+<div class="sourceCode" id="cb33"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="ot">sorted ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>sorted xs <span class="ot">=</span> <span class="fu">sort</span> xs <span class="op">==</span> xs</span></code></pre></div>
+<div class="sourceCode" id="cb34"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="ot">insertSorted1 ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> [a]</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>insertSorted1 x xs <span class="op">|</span> sorted xs <span class="ot">=</span> <span class="dt">Just</span> (insert x xs)</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>insertSorted1 _ _ <span class="ot">=</span> <span class="dt">Nothing</span></span></code></pre></div>
+<p>We can clean this up with a pattern synonym.</p>
+<div class="sourceCode" id="cb35"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="ot">sorted&#39; ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> [a]</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>sorted&#39; xs <span class="op">|</span> sorted xs <span class="ot">=</span> <span class="dt">Just</span> xs</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>           <span class="op">|</span> <span class="fu">otherwise</span> <span class="ot">=</span> <span class="dt">Nothing</span></span></code></pre></div>
+<div class="sourceCode" id="cb36"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Sorted</span><span class="ot"> ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> [a]</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Sorted</span> xs <span class="ot">&lt;-</span> (sorted&#39; <span class="ot">-&gt;</span> <span class="dt">Just</span> xs)</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Sorted</span> xs <span class="ot">=</span> <span class="fu">sort</span> xs</span></code></pre></div>
+<p>This pattern synonym has a constraint. Specifically, this is known as a <em>required</em> constraint,
+because it must be satisfied by the context in order to use the pattern. Now we can write
+<code>insertSorted</code> with a simple pattern match by using <code>Sorted</code>:</p>
+<div class="sourceCode" id="cb37"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="ot">insertSorted2 ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> [a]</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>insertSorted2 x (<span class="dt">Sorted</span> xs) <span class="ot">=</span> <span class="dt">Just</span> (insert x xs)</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>insertSorted2 _ _ <span class="ot">=</span> <span class="dt">Nothing</span></span></code></pre></div>
+<p>Because we defined it bidirectionally, we can also use the <code>Sorted</code> pattern in an expression to
+sort lists.</p>
+<div class="sourceCode" id="cb38"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; Sorted [3, 2, 6, 5]</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- [2,3,5,6]</span></span></code></pre></div>
+<h2 id="matching-abstract-types">
+Matching Abstract Types
+</h2>
+<p>Consider the type of sorted lists. We might represent that as an abstract type via a <code>newtype</code> like
+this:</p>
+<div class="sourceCode" id="cb39"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">SortedList</span> a <span class="ot">=</span> <span class="dt">UnsafeSortedList</span> {<span class="ot"> getSortedList ::</span> [a] }</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> stock (<span class="dt">Show</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb40"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="ot">sortedList ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">SortedList</span> a)</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>sortedList (<span class="dt">Sorted</span> xs) <span class="ot">=</span> <span class="dt">Just</span> (<span class="dt">UnsafeSortedList</span> xs)</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>sortedList _ <span class="ot">=</span> <span class="dt">Nothing</span></span></code></pre></div>
+<p>Naturally, we don’t export the data constructor <code>UnsafeSortedList</code> to avoid people constructing
+a <code>SortedList</code> which isn’t actually sorted. This has the advantage of having no runtime overhead
+over ordinary lists, since <code>newtype</code> wrappers are erased at compile time. However, matching against
+a sorted list becomes a hassle for consumers who don’t have access to the constructor, once again
+requiring view patterns or pattern guards. For instance, extracting the head of a sorted list
+(which is the minimum, of course):</p>
+<div class="sourceCode" id="cb41"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="ot">sortedMin ::</span> <span class="dt">SortedList</span> a <span class="ot">-&gt;</span> <span class="dt">Maybe</span> a</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>sortedMin xs <span class="op">|</span> x <span class="op">:</span> _ <span class="ot">&lt;-</span> getSortedList xs <span class="ot">=</span> <span class="dt">Just</span> x</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>sortedMin _ <span class="ot">=</span> <span class="dt">Nothing</span></span></code></pre></div>
+<p>We can use pattern synonyms to define a safe list-like interface for this type.</p>
+<div class="sourceCode" id="cb42"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span><span class="ot"> (:&gt;) ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">SortedList</span> a <span class="ot">-&gt;</span> <span class="dt">SortedList</span> a</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> x <span class="op">:&gt;</span> xs <span class="ot">&lt;-</span> <span class="dt">UnsafeSortedList</span> (x <span class="op">:</span> (<span class="dt">UnsafeSortedList</span> <span class="ot">-&gt;</span> xs))</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>    x <span class="op">:&gt;</span> <span class="dt">UnsafeSortedList</span> xs <span class="ot">=</span> <span class="dt">UnsafeSortedList</span> (insert x xs)</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a><span class="kw">infixr</span> <span class="dv">5</span> <span class="op">:&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb43"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Nil</span><span class="ot"> ::</span> <span class="dt">SortedList</span> a</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pattern</span> <span class="dt">Nil</span> <span class="ot">=</span> <span class="dt">UnsafeSortedList</span> []</span></code></pre></div>
+<div class="sourceCode" id="cb44"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# COMPLETE (:&gt;), Nil #-}</span></span></code></pre></div>
+<p>Now we can construct sorted lists in a manner similar to lists, with it automatically being sorted
+as its constructed.</p>
+<div class="sourceCode" id="cb45"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; 4 :&gt; 2 :&gt; 5 :&gt; 3 :&gt; Nil</span></span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- UnsafeSortedList {getSortedList = [2,3,4,5]}</span></span></code></pre></div>
+<p>We can also deconstruct sorted lists just like ordinary lists:</p>
+<div class="sourceCode" id="cb46"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="ot">sumSorted ::</span> (<span class="dt">Num</span> a, <span class="dt">Ord</span> a) <span class="ot">=&gt;</span> <span class="dt">SortedList</span> a <span class="ot">-&gt;</span> a</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>sumSorted <span class="dt">Nil</span> <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>sumSorted (x <span class="op">:&gt;</span> xs) <span class="ot">=</span> x <span class="op">+</span> sumSorted xs</span></code></pre></div>
+<p>This leads to some interesting definitions, such as this insertion sort:</p>
+<div class="sourceCode" id="cb47"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="ot">insertionSort ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> [a] <span class="ot">-&gt;</span> <span class="dt">SortedList</span> a</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>insertionSort <span class="ot">=</span> <span class="fu">foldr</span> (<span class="op">:&gt;</span>) <span class="dt">Nil</span></span></code></pre></div>
+<div class="sourceCode" id="cb48"><pre class="sourceCode haskell literate"><code class="sourceCode haskell"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; insertionSort [7, 6, 2, 4, 7, 4, 5, 9]</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- UnsafeSortedList {getSortedList = [2,4,4,5,6,7,7,9]}</span></span></code></pre></div>
+<p>We can also “bundle” our pattern synonyms together with our type constructor when exporting them.
+Instead of a usual export like <code>SortedList (getSortedList)</code>, we can include the pattern synonyms we
+defined <code>SortedList ((:&gt;), Nil, getSortedList)</code>. Then when a consumer imports the type with <code>import BasicPatternSynonyms (SortedList (..))</code>, they get the pattern synonyms as well. This is demonstrated
+at the beginning of the post.</p>
+<h2 id="resources">
+Additional Resources
+</h2>
+<p>The official documentation for pattern synonyms lives in
+<a href="https://downloads.haskell.org/ghc/latest/docs/html/users_guide/exts/pattern_synonyms.html">
+the GHC user’s guide</a>, though I don’t think it’s very good.</p>
+<p>Richard Eisenberg also has a
+<a href="https://youtu.be/SPC_R5nwFqo">few</a>
+<a href="https://youtu.be/00HxIPG0vW0">excellent</a>
+<a href="https://youtu.be/_KOqBvZD6HU">videos</a>
+on the topic.</p>
+</article>
+
+
+<a href="/pattern-synonym-basics.lhs">Post Source</a>
+
+    </main>
+
+    <footer>
+    </footer>
+  </body>
+</html>
